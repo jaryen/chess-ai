@@ -39,4 +39,4 @@ let scores = [3, 5, 2, 9, 12, 5, 23, 23];
 let n = scores.length;
 let h = log2(n);
 let res = minimax(0, 0, true, scores, h);
-console.log( "The optimal value is : " + res);
+console.log("The optimal value is : " + res);

@@ -2,8 +2,8 @@
 the current position on the board for minimax
 to use. */
 import { Chess } from './chess.js';
-// import { game } from './playermoves.js';
 
+// Piece values
 const Pawn = 100;
 const Knight = 350;
 const Bishop = 350;
@@ -95,49 +95,60 @@ export function makePossibleMoves(currLevel, game, pos) {
 }
 
 // Returns the optimal score and corresponding best move.
-function minimax(depth, game, isMaxi) {
+function minimax(depth, game, isMax) {
+    // Thing to return
     var obj = {
         bestScore: 0,
-        bestMove: null
+        bestMove: ''
     };
+
     // When the number of moves to search or 
     // no legal moves left is reached.
     if (depth == 0 || game.moves().length == 0) {
         obj.bestScore = evaluateBoard(game);
-        return obj.bestScore;
+        return obj;
     }
+
     let moves = game.moves();
-    if (isMaxi) {
+    console.log(moves);
+    if (isMax) {
         // Maximizing.
         obj.bestScore = -Infinity;
-        for (let i = 0; i < game.moves().length; i++) {
-            game.move(moves[i]);
-            if (obj.bestScore < minimax(depth-1, game, false).bestScore) {
-                obj.bestScore = minimax(depth-1, game, false).bestScore;
-                obj.bestMove = minimax(depth-1, game, false).bestMove == null ? obj.bestMove : minimax(depth-1, game, false).bestMove;
+        for (let i = 0; i < moves.length; i++) {
+            let updatedGame = new Chess();
+            updatedGame.load(game.fen());
+            updatedGame.move(moves[i]); // make each possible moves from current position
+            if (obj.bestScore < minimax(depth-1, updatedGame, false).bestScore) {
+                obj.bestScore = minimax(depth-1, updatedGame, false).bestScore; // assign better score.
+                obj.bestMove = moves[i]; // assign current move because score is better if move is made.
             }
         }
         return obj;
     } else {
         // Minimizing.
         obj.bestScore = Infinity;
-        for (let i = 0; i < game.moves().length; i++) {
-            game.move(moves[i]);
-            if (obj.bestScore > minimax(depth-1, game, true).bestScore) {
-                obj.bestScore = minimax(depth-1, game, true).bestScore;
-                obj.bestMove = minimax(depth-1, game, false).bestMove == null ? obj.bestMove : minimax(depth-1, game, false).bestMove;
+        for (let i = 0; i < moves.length; i++) {
+            let updatedGame = new Chess();
+            updatedGame.load(game.fen());
+            updatedGame.move(moves[i]); // make each possible moves from current position
+            if (obj.bestScore > minimax(depth-1, updatedGame, true).bestScore) {
+                obj.bestScore = minimax(depth-1, updatedGame, true).bestScore;
+                obj.bestMove = moves[i];
             }
         }
         return obj;
     }
 }
 
-function getNextMove() {
-    // Returns the next optimal move.
-
-}
-
 let game = new Chess();
+
+// Get the best score and moves for a new game.
 let obj = minimax(maxDepth, game, true);
-console.log("Max Score: ", obj.bestScore);
-console.log("Best Move: ", obj.bestMoves);
+console.log("Max Score:", obj.bestScore);
+console.log("Best Move:", obj.bestMove);
+
+game.move(obj.bestMove);
+
+let obj2 = minimax(maxDepth, game, true);
+console.log("Max Score:", obj2.bestScore);
+console.log("Best Move:", obj2.bestMove);
