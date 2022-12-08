@@ -11,13 +11,15 @@ const Rook = 525;
 const Queen = 1000;
 
 // Depth of the minimax search tree.
-const maxDepth = 1;
+const maxDepth = 3;
 
 // Returns the total material score for both
 // sides for the current position on the board.
 export function evaluateBoard(board) {
-    let w_score = 0;
-    let b_score = 0;
+    let score = {
+        w_score: 0,
+        b_score: 0
+    }
 
     // Get the piece positions using FEN
     let piecePos = board.fen().substring(0, board.fen().indexOf(' '));
@@ -34,28 +36,28 @@ export function evaluateBoard(board) {
             switch(currPiece) {
                 case 'P':
                 case 'p':
-                    if (currPiece === 'P') w_score += Pawn;
-                    else b_score += Pawn;
+                    if (currPiece === 'P') score.w_score += Pawn;
+                    else score.b_score += Pawn;
                     break;
                 case 'N':
                 case 'n':
-                    if (currPiece === 'N') w_score += Knight;
-                    else b_score += Knight;
+                    if (currPiece === 'N') score.w_score += Knight;
+                    else score.b_score += Knight;
                     break;
                 case 'B':
                 case 'b':
-                    if (currPiece === 'B') w_score += Bishop;
-                    else b_score += Bishop;
+                    if (currPiece === 'B') score.w_score += Bishop;
+                    else score.b_score += Bishop;
                     break;
                 case 'R':
                 case 'r':
-                    if (currPiece === 'R') w_score += Rook;
-                    else b_score += Rook;
+                    if (currPiece === 'R') score.w_score += Rook;
+                    else score.b_score += Rook;
                     break;
                 case 'Q':
                 case 'q':
-                    if (currPiece === 'Q') w_score += Queen;
-                    else b_score += Queen;
+                    if (currPiece === 'Q') score.w_score += Queen;
+                    else score.b_score += Queen;
                     break;
                 default:
                     break;
@@ -63,7 +65,7 @@ export function evaluateBoard(board) {
         }
     }
 
-    return w_score;
+    return score;
 }
 
 // Called each move for bot
@@ -95,17 +97,22 @@ export function makePossibleMoves(currLevel, game, pos) {
 }
 
 // Returns the optimal score and corresponding best move.
-function minimax(depth, game, isMax) {
-    // Thing to return
+export function minimax(depth, game, isMax, color) {
+    // Object that holds the best score and
+    // best move. This is returned.
     var obj = {
         bestScore: 0,
         bestMove: ''
     };
 
-    // When the number of moves to search or 
+    // Base case. When the number of moves to search or 
     // no legal moves left is reached.
     if (depth == 0 || game.moves().length == 0) {
-        obj.bestScore = evaluateBoard(game);
+        if (color === 'w') {
+            obj.bestScore = evaluateBoard(game).w_score;
+        } else {
+            obj.bestScore = evaluateBoard(game).b_score;
+        }
         return obj;
     }
 
@@ -123,7 +130,6 @@ function minimax(depth, game, isMax) {
                 obj.bestMove = moves[i]; // assign current move because score is better if move is made.
             }
         }
-        return obj;
     } else {
         // Minimizing.
         obj.bestScore = Infinity;
@@ -136,19 +142,19 @@ function minimax(depth, game, isMax) {
                 obj.bestMove = moves[i];
             }
         }
-        return obj;
     }
+    return obj;
 }
 
-let game = new Chess();
+/* let game = new Chess();
 
 // Get the best score and moves for a new game.
-let obj = minimax(maxDepth, game, true);
+let obj = minimax(maxDepth, game, true, game.turn());
 console.log("Max Score:", obj.bestScore);
 console.log("Best Move:", obj.bestMove);
 
-game.move(obj.bestMove);
+game.move(obj.bestMove); */
 
-let obj2 = minimax(maxDepth, game, true);
+/* let obj2 = minimax(maxDepth, game, true, game.turn());
 console.log("Max Score:", obj2.bestScore);
-console.log("Best Move:", obj2.bestMove);
+console.log("Best Move:", obj2.bestMove); */

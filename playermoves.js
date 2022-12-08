@@ -1,19 +1,21 @@
 /* This file declares all of the legal moves for the chess
 game. */
 import { Chess } from './chess.js';
-import { evaluateBoard, makePossibleMoves } from './value.js';
+import { evaluateBoard, makePossibleMoves, minimax } from './value.js';
 
 export var game = new Chess();
-console.log(game.moves());
+
+var bestMove = '';
 
 // Fires when position of board changes.
 function onChange(oldPos, newPos) {
-    /* console.log('Position changed:');
-    console.log('Old position: ' + Chessboard.objToFen(oldPos));
-    console.log('New position: ' + Chessboard.objToFen(newPos));
-    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'); */
 
-    console.log(game.moves()); 
+}
+
+function CPUMove() {
+    bestMove = minimax(3, game, true, game.turn()).bestMove;
+    game.move(bestMove);
+    board.position(game.fen());
 }
 
 // Fires when a piece is picked up.
@@ -36,6 +38,8 @@ function onDrop (source, target) {
         to: target,
         promotion: 'q' // NOTE: always promote to a queen for example simplicity
     });
+
+    window.setTimeout(CPUMove(), 250);
 }
 
 // update the board position after the piece snap
