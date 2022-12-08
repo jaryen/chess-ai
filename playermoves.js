@@ -39,6 +39,9 @@ function onDrop (source, target) {
         promotion: 'q' // NOTE: always promote to a queen for example simplicity
     });
 
+    // illegal move
+    if (move === null) return 'snapback';
+
     window.setTimeout(CPUMove(), 250);
 }
 

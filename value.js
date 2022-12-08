@@ -117,13 +117,13 @@ export function minimax(depth, game, isMax, color) {
     }
 
     let moves = game.moves();
-    console.log(moves);
+    let updatedGame = new Chess();
+    updatedGame.load(game.fen());
+
     if (isMax) {
         // Maximizing.
         obj.bestScore = -Infinity;
         for (let i = 0; i < moves.length; i++) {
-            let updatedGame = new Chess();
-            updatedGame.load(game.fen());
             updatedGame.move(moves[i]); // make each possible moves from current position
             if (obj.bestScore < minimax(depth-1, updatedGame, false).bestScore) {
                 obj.bestScore = minimax(depth-1, updatedGame, false).bestScore; // assign better score.
@@ -134,8 +134,6 @@ export function minimax(depth, game, isMax, color) {
         // Minimizing.
         obj.bestScore = Infinity;
         for (let i = 0; i < moves.length; i++) {
-            let updatedGame = new Chess();
-            updatedGame.load(game.fen());
             updatedGame.move(moves[i]); // make each possible moves from current position
             if (obj.bestScore > minimax(depth-1, updatedGame, true).bestScore) {
                 obj.bestScore = minimax(depth-1, updatedGame, true).bestScore;
