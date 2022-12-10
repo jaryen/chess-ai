@@ -5,16 +5,16 @@ import { evaluateBoard, makePossibleMoves, minimax } from './value.js';
 
 export var game = new Chess();
 
-var bestMove = '';
-
 // Fires when position of board changes.
 function onChange(oldPos, newPos) {
 
 }
 
 function CPUMove() {
-    bestMove = minimax(3, game, true, game.turn()).bestMove;
-    game.move(bestMove);
+    console.log(game.moves());
+    let obj = minimax(3, game, true, game.turn());
+    console.log(obj.bestMoves);
+    game.move(obj.bestMove);
     board.position(game.fen());
 }
 

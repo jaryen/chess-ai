@@ -102,16 +102,18 @@ export function minimax(depth, game, isMax, color) {
     // best move. This is returned.
     var obj = {
         bestScore: 0,
-        bestMove: ''
+        bestMove: '',
+        bestMoves: []
     };
 
     // Base case. When the number of moves to search or 
     // no legal moves left is reached.
     if (depth == 0 || game.moves().length == 0) {
+        // Calculate the gain.
         if (color === 'w') {
-            obj.bestScore = evaluateBoard(game).w_score;
+            obj.bestScore = evaluateBoard(game).w_score - evaluateBoard(game).b_score;
         } else {
-            obj.bestScore = evaluateBoard(game).b_score;
+            obj.bestScore = evaluateBoard(game).b_score - evaluateBoard(game).w_score;
         }
         return obj;
     }
@@ -125,8 +127,9 @@ export function minimax(depth, game, isMax, color) {
         obj.bestScore = -Infinity;
         for (let i = 0; i < moves.length; i++) {
             updatedGame.move(moves[i]); // make each possible moves from current position
-            if (obj.bestScore < minimax(depth-1, updatedGame, false).bestScore) {
-                obj.bestScore = minimax(depth-1, updatedGame, false).bestScore; // assign better score.
+            if (obj.bestScore <= minimax(depth-1, updatedGame, false, color).bestScore) {
+                obj.bestScore = minimax(depth-1, updatedGame, false, color).bestScore; // assign better score.
+                obj.bestMoves.push(moves[i]);
                 obj.bestMove = moves[i]; // assign current move because score is better if move is made.
             }
         }
@@ -135,12 +138,14 @@ export function minimax(depth, game, isMax, color) {
         obj.bestScore = Infinity;
         for (let i = 0; i < moves.length; i++) {
             updatedGame.move(moves[i]); // make each possible moves from current position
-            if (obj.bestScore > minimax(depth-1, updatedGame, true).bestScore) {
-                obj.bestScore = minimax(depth-1, updatedGame, true).bestScore;
+            if (obj.bestScore >= minimax(depth-1, updatedGame, true, color).bestScore) {
+                obj.bestScore = minimax(depth-1, updatedGame, true, color).bestScore;
+                obj.bestMoves.push(moves[i]);
                 obj.bestMove = moves[i];
             }
         }
     }
+
     return obj;
 }
 
