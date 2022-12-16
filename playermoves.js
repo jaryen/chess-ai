@@ -1,7 +1,7 @@
 /* This file declares all of the legal moves for the chess
 game. */
 import { Chess } from './chess.js';
-import { evaluateBoard, makePossibleMoves, minimax } from './value.js';
+import { evaluateBoard, makePossibleMoves, minimax, alpha_beta } from './value.js';
 
 export var game = new Chess();
 
@@ -12,7 +12,7 @@ function onChange(oldPos, newPos) {
 
 function CPUMove() {
     console.log(game.moves());
-    let obj = minimax(3, game, true, game.turn());
+    let obj = alpha_beta(3, game, true, -Infinity, Infinity, game.turn());
     console.log(obj.bestMoves);
     game.move(obj.bestMove);
     board.position(game.fen());

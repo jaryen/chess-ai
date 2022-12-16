@@ -110,10 +110,12 @@ export function minimax(depth, game, isMax, color) {
     // no legal moves left is reached.
     if (depth == 0 || game.moves().length == 0) {
         // Calculate the gain.
+        let w_score = evaluateBoard(game).w_score;
+        let b_score = evaluateBoard(game).b_score;
         if (color === 'w') {
-            obj.bestScore = evaluateBoard(game).w_score - evaluateBoard(game).b_score;
+            obj.bestScore = w_score - b_score;
         } else {
-            obj.bestScore = evaluateBoard(game).b_score - evaluateBoard(game).w_score;
+            obj.bestScore = b_score - w_score;
         }
         return obj;
     }
@@ -127,8 +129,9 @@ export function minimax(depth, game, isMax, color) {
         obj.bestScore = -Infinity;
         for (let i = 0; i < moves.length; i++) {
             updatedGame.move(moves[i]); // make each possible moves from current position
-            if (obj.bestScore <= minimax(depth-1, updatedGame, false, color).bestScore) {
-                obj.bestScore = minimax(depth-1, updatedGame, false, color).bestScore; // assign better score.
+            let minimaxScore = minimax(depth-1, updatedGame, false, color).bestScore;
+            if (obj.bestScore <= minimaxScore) {
+                obj.bestScore = minimaxScore; // assign better score.
                 obj.bestMoves.push(moves[i]);
                 obj.bestMove = moves[i]; // assign current move because score is better if move is made.
             }
@@ -138,8 +141,9 @@ export function minimax(depth, game, isMax, color) {
         obj.bestScore = Infinity;
         for (let i = 0; i < moves.length; i++) {
             updatedGame.move(moves[i]); // make each possible moves from current position
-            if (obj.bestScore >= minimax(depth-1, updatedGame, true, color).bestScore) {
-                obj.bestScore = minimax(depth-1, updatedGame, true, color).bestScore;
+            let minimaxScore = minimax(depth-1, updatedGame, true, color).bestScore;
+            if (obj.bestScore >= minimaxScore) {
+                obj.bestScore = minimaxScore;
                 obj.bestMoves.push(moves[i]);
                 obj.bestMove = moves[i];
             }
@@ -148,6 +152,91 @@ export function minimax(depth, game, isMax, color) {
 
     return obj;
 }
+
+// Alpha Beta pruning function.
+export function alpha_beta(depth, game, isMax, alpha, beta, color) {
+    // Object that holds the best score and
+    // best move. This is returned.
+    var obj = {
+        bestScore: 0,
+        bestMove: '',
+        bestMoves: []
+    };
+
+    // Base case. When the depth is reached, return
+    // the gain for the side being calculated.
+    if (depth == 0) {
+        // Calculate the gain.
+        let score = evaluateBoard(game);
+        if (color === 'w') {
+            obj.bestScore = score.w_score - score.b_score;
+        } else {
+            obj.bestScore = score.b_score - score.w_score;
+        }
+        return obj;
+    }
+
+    // Get the legal moves.
+    let moves = game.moves();
+
+    // Create a new game and load the current position.
+    let updatedGame = new Chess();
+    updatedGame.load(game.fen());
+
+    if (isMax) {
+        // Maximizing.
+        // Go through each legal moves.
+        for (let i = 0; i < moves.length; i++) {
+            updatedGame.move(moves[i]);
+            // Get the best gain for this move.
+            let score = alpha_beta(depth-1, updatedGame, false, alpha, beta, color).bestScore;
+            // If move returns a gain greater than
+            // the current best gain, cutoff. This
+            // is because the minimizer would never
+            // choose this move or any subsequent moves.
+            if (score >= beta) {
+                return obj;
+            }
+            // If there is a better move found.
+            if (score > alpha) {
+                alpha = score;
+                obj.bestScore = alpha;
+                obj.bestMove = moves[i];
+            }
+        }
+        return obj;
+    } else {
+        for (let i = 0; i < moves.length; i++) {
+            updatedGame.move(moves[i]);
+            let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, color).bestScore;
+            if (score <= alpha) {
+                return obj;
+            }
+            if (score < beta) {
+                beta = score;
+                obj.bestScore = beta;
+                obj.bestMove = moves[i];
+            }
+        }
+        return obj;
+    }
+}
+
+let game = new Chess();
+const t0 = performance.now();
+let test1 = alpha_beta(3, game, true, -Infinity, Infinity, game.turn());
+const t1 = performance.now();
+
+console.log("Alpha Beta pruning best move: " + test1.bestMove);
+console.log(`Time to perform: ${(t1 - t0)/1000} seconds.`);
+
+let game2 = new Chess();
+const t2 = performance.now();
+let test2 = minimax(3, game, true, game.turn());
+const t3 = performance.now();
+
+console.log("Minimax best move: " + test2.bestMove);
+console.log(`Time to perform: ${(t3 - t2)/1000} seconds.`)
 
 /* let game = new Chess();
 
