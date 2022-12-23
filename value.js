@@ -9,20 +9,29 @@ const Knight = 350;
 const Bishop = 350;
 const Rook = 525;
 const Queen = 1000;
+const King = Infinity;
+
+const piece_value_map = new Map();
+piece_value_map.set('p', 100);
+piece_value_map.set('n', 350);
+piece_value_map.set('b', 350);
+piece_value_map.set('r', 525);
+piece_value_map.set('q', 1000);
+piece_value_map.set('k', Infinity);
 
 // Depth of the minimax search tree.
 const maxDepth = 3;
 
 // Returns the total material score for both
 // sides for the current position on the board.
-export function evaluateBoard(board) {
+export function evaluateBoard(game) {
     let score = {
         w_score: 0,
         b_score: 0
     }
 
     // Get the piece positions using FEN
-    let piecePos = board.fen().substring(0, board.fen().indexOf(' '));
+    let piecePos = game.fen().substring(0, game.fen().indexOf(' '));
 
     // Split piece pos string at '/'
     let piecePosArr = piecePos.split('/');
@@ -68,32 +77,9 @@ export function evaluateBoard(board) {
     return score;
 }
 
-// Called each move for bot
-// For each legal move available, make that move and 
-// repeat the process for the new legal moves from the 
-// previous move.
-// Repeat for 'numMoves' times.
-// Returns an evaluation when the current move level reached
-// levels OR if no moves are left for current position.
-export function makePossibleMoves(currLevel, game, pos) {
-    if (currLevel >= maxDepth || game.moves().length <= 0) {
-        return evaluateBoard(game);
-    }
-
-    // Get the array of available moves.
-    let moves = game.moves();
-
-    // Get the current position on the board.
-    let chess = new Chess(pos);
-
-    currLevel += 1;
-
-    // For each move, make all possible moves from
-    // that move.
-    for (let i = 0; i < moves.length; i++) {
-        chess.move(moves[i]);
-        makePossibleMoves(currLevel, chess, chess.fen());
-    }
+function evaluate_gain(scores, side) {
+    let gain = side === 'w' ? scores.w_score - scores.b_score : scores.b_score - scores.w_score;
+    return gain;
 }
 
 // Returns the optimal score and corresponding best move.
@@ -132,7 +118,7 @@ export function minimax(depth, game, isMax, color) {
             let minimaxScore = minimax(depth-1, updatedGame, false, color).bestScore;
             if (obj.bestScore <= minimaxScore) {
                 obj.bestScore = minimaxScore; // assign better score.
-                obj.bestMoves.push(moves[i]);
+                obj.bestMoves.push(moves[i]); // Store the best move.
                 obj.bestMove = moves[i]; // assign current move because score is better if move is made.
             }
         }
@@ -154,25 +140,20 @@ export function minimax(depth, game, isMax, color) {
 }
 
 // Alpha Beta pruning function.
-export function alpha_beta(depth, game, isMax, alpha, beta, color) {
+export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     // Object that holds the best score and
     // best move. This is returned.
     var obj = {
         bestScore: 0,
         bestMove: '',
-        bestMoves: []
     };
 
     // Base case. When the depth is reached, return
     // the gain for the side being calculated.
     if (depth == 0) {
-        // Calculate the gain.
-        let score = evaluateBoard(game);
-        if (color === 'w') {
-            obj.bestScore = score.w_score - score.b_score;
-        } else {
-            obj.bestScore = score.b_score - score.w_score;
-        }
+        // Calculate the gain and return it.
+        let scores = evaluateBoard(game);
+        obj.bestScore = evaluate_gain(scores, side);
         return obj;
     }
 
@@ -189,7 +170,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, color) {
         for (let i = 0; i < moves.length; i++) {
             updatedGame.move(moves[i]);
             // Get the best gain for this move.
-            let score = alpha_beta(depth-1, updatedGame, false, alpha, beta, color).bestScore;
+            let score = alpha_beta(depth-1, updatedGame, false, alpha, beta, side).bestScore;
             // If move returns a gain greater than
             // the current best gain, cutoff. This
             // is because the minimizer would never
@@ -208,7 +189,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, color) {
     } else {
         for (let i = 0; i < moves.length; i++) {
             updatedGame.move(moves[i]);
-            let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, color).bestScore;
+            let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, side).bestScore;
             if (score <= alpha) {
                 return obj;
             }
@@ -222,7 +203,50 @@ export function alpha_beta(depth, game, isMax, alpha, beta, color) {
     }
 }
 
+// This function orders the nodes in
+// the alpha-beta tree for optimal pruning.
+function move_ordering(moves) {
+    // Order by capture moves first.
+    // MVV-LVA
+
+    // First, get the children of current none-leaf
+    // node.
+    // Loop through each child and determine whether it
+    // is a MVV-LVA capture move.
+    // Put all of the MVV-LVA moves in a list and order
+    // by gain in descending order.
+    // Return this list to be traversed by the alpha-beta algo.
+    let move_gain_map = new Map();
+
+    for (let i = 0; i < moves.length; i++) {
+        let move = moves[i];
+        let piece = move.piece;
+        let gain = 0;
+        if (move.hasOwnProperty('captured')) {
+            let piece_captured = move.captured;
+            gain = piece_value_map.get(piece_captured) - piece_value_map.get(piece);
+        }
+        move_gain_map.set(move.san, gain);
+    }
+
+    // Order map by value
+    const move_gain_ordered = new Map([...move_gain_map.entries()].sort((a, b) => b[1] - a[1]));
+    return Array.from(move_gain_ordered.keys());
+}
+
+
+/* 
+*
+TESTS 
+*
+*/
 let game = new Chess();
+game.load('8/P3R2r/1P5p/PP1p4/R2p4/2r5/2Bb2k1/3K1b2 w - - 0 1');
+let verbose_moves = game.moves({ verbose: true });
+let ordered_moves = move_ordering(verbose_moves);
+console.log(ordered_moves);
+
+/* let game = new Chess();
 const t0 = performance.now();
 let test1 = alpha_beta(3, game, true, -Infinity, Infinity, game.turn());
 const t1 = performance.now();
@@ -236,7 +260,7 @@ let test2 = minimax(3, game, true, game.turn());
 const t3 = performance.now();
 
 console.log("Minimax best move: " + test2.bestMove);
-console.log(`Time to perform: ${(t3 - t2)/1000} seconds.`)
+console.log(`Time to perform: ${(t3 - t2)/1000} seconds.`); */
 
 /* let game = new Chess();
 

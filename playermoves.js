@@ -13,7 +13,6 @@ function onChange(oldPos, newPos) {
 function CPUMove() {
     console.log(game.moves());
     let obj = alpha_beta(3, game, true, -Infinity, Infinity, game.turn());
-    console.log(obj.bestMoves);
     game.move(obj.bestMove);
     board.position(game.fen());
 }
