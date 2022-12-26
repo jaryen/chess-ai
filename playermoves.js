@@ -1,7 +1,7 @@
 /* This file declares all of the legal moves for the chess
 game. */
 import { Chess } from './chess.js';
-import { evaluateBoard, makePossibleMoves, minimax, alpha_beta } from './value.js';
+import { alpha_beta } from './value.js';
 
 export var game = new Chess();
 
@@ -10,9 +10,9 @@ function onChange(oldPos, newPos) {
 
 }
 
+// Calls the alpha beta pruning function.
 function CPUMove() {
-    console.log(game.moves());
-    let obj = alpha_beta(3, game, true, -Infinity, Infinity, game.turn());
+    let obj = alpha_beta(4, game, true, -Infinity, Infinity, game.turn());
     game.move(obj.bestMove);
     board.position(game.fen());
 }

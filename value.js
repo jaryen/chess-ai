@@ -9,18 +9,19 @@ const Knight = 350;
 const Bishop = 350;
 const Rook = 525;
 const Queen = 1000;
-const King = Infinity;
+const King = 1250;
 
 const piece_value_map = new Map();
 piece_value_map.set('p', 100);
 piece_value_map.set('n', 350);
 piece_value_map.set('b', 350);
-piece_value_map.set('r', 525);
+piece_value_map.set('r', 530);
 piece_value_map.set('q', 1000);
-piece_value_map.set('k', Infinity);
+piece_value_map.set('k', 1250);
+// Points for checkmate?
 
 // Depth of the minimax search tree.
-const maxDepth = 3;
+const maxDepth = 4;
 
 // Returns the total material score for both
 // sides for the current position on the board.
@@ -33,10 +34,10 @@ export function evaluateBoard(game) {
     // Get the piece positions using FEN
     let piecePos = game.fen().substring(0, game.fen().indexOf(' '));
 
-    // Split piece pos string at '/'
+    // Split piece pos string at '/' (by rank).
     let piecePosArr = piecePos.split('/');
 
-    // Loop through each character and add appropriate
+    // Loop through each rank and add the appropriate
     // piece value to the total score for each side.
     for (let i = 0; i < piecePosArr.length; i++) {
         let currRow = piecePosArr[i];
@@ -68,6 +69,11 @@ export function evaluateBoard(game) {
                     if (currPiece === 'Q') score.w_score += Queen;
                     else score.b_score += Queen;
                     break;
+                case 'K':
+                case 'k':
+                    if (currPiece === 'K') score.w_score += King;
+                    else score.b_score += King;
+                    break;
                 default:
                     break;
             }
@@ -77,9 +83,9 @@ export function evaluateBoard(game) {
     return score;
 }
 
+// Evaluates the gain for given side.
 function evaluate_gain(scores, side) {
-    let gain = side === 'w' ? scores.w_score - scores.b_score : scores.b_score - scores.w_score;
-    return gain;
+    return (side === 'w') ? scores.w_score - scores.b_score : scores.b_score - scores.w_score;
 }
 
 // Returns the optimal score and corresponding best move.
@@ -94,7 +100,7 @@ export function minimax(depth, game, isMax, color) {
 
     // Base case. When the number of moves to search or 
     // no legal moves left is reached.
-    if (depth == 0 || game.moves().length == 0) {
+    if (depth == 0 || game.isGameOver) {
         // Calculate the gain.
         let w_score = evaluateBoard(game).w_score;
         let b_score = evaluateBoard(game).b_score;
@@ -148,9 +154,10 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
         bestMove: '',
     };
 
-    // Base case. When the depth is reached, return
+    // Base case. When the depth is reached or
+    // the game is over, return
     // the gain for the side being calculated.
-    if (depth == 0) {
+    if (depth == 0 || game.isGameOver) {
         // Calculate the gain and return it.
         let scores = evaluateBoard(game);
         obj.bestScore = evaluate_gain(scores, side);
@@ -159,6 +166,8 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
 
     // Get the legal moves.
     let moves = game.moves();
+    // Order the moves from best to worst.
+    let ordered_moves = order_moves(game.moves({ verbose: true }));
 
     // Create a new game and load the current position.
     let updatedGame = new Chess();
@@ -167,8 +176,8 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     if (isMax) {
         // Maximizing.
         // Go through each legal moves.
-        for (let i = 0; i < moves.length; i++) {
-            updatedGame.move(moves[i]);
+        for (let i = 0; i < ordered_moves.length; i++) {
+            updatedGame.move(ordered_moves[i]);
             // Get the best gain for this move.
             let score = alpha_beta(depth-1, updatedGame, false, alpha, beta, side).bestScore;
             // If move returns a gain greater than
@@ -182,13 +191,14 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
             if (score > alpha) {
                 alpha = score;
                 obj.bestScore = alpha;
-                obj.bestMove = moves[i];
+                obj.bestMove = ordered_moves[i];
             }
         }
         return obj;
     } else {
-        for (let i = 0; i < moves.length; i++) {
-            updatedGame.move(moves[i]);
+        // Minimizing.
+        for (let i = 0; i < ordered_moves.length; i++) {
+            updatedGame.move(ordered_moves[i]);
             let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, side).bestScore;
             if (score <= alpha) {
                 return obj;
@@ -196,7 +206,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
             if (score < beta) {
                 beta = score;
                 obj.bestScore = beta;
-                obj.bestMove = moves[i];
+                obj.bestMove = ordered_moves[i];
             }
         }
         return obj;
@@ -205,10 +215,9 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
 
 // This function orders the nodes in
 // the alpha-beta tree for optimal pruning.
-function move_ordering(moves) {
+export function order_moves(moves) {
     // Order by capture moves first.
     // MVV-LVA
-
     // First, get the children of current none-leaf
     // node.
     // Loop through each child and determine whether it
@@ -216,6 +225,10 @@ function move_ordering(moves) {
     // Put all of the MVV-LVA moves in a list and order
     // by gain in descending order.
     // Return this list to be traversed by the alpha-beta algo.
+
+    // Another heuristic is (re)capturing the last
+    // moved piece with the least valuable attacker.
+    // Other heuristics to consider: promotions, checkmates
     let move_gain_map = new Map();
 
     for (let i = 0; i < moves.length; i++) {
@@ -224,53 +237,12 @@ function move_ordering(moves) {
         let gain = 0;
         if (move.hasOwnProperty('captured')) {
             let piece_captured = move.captured;
-            gain = piece_value_map.get(piece_captured) - piece_value_map.get(piece);
+            gain = (100*piece_value_map.get(piece_captured)) - (piece_value_map.get(piece));
         }
         move_gain_map.set(move.san, gain);
     }
 
     // Order map by value
-    const move_gain_ordered = new Map([...move_gain_map.entries()].sort((a, b) => b[1] - a[1]));
+    let move_gain_ordered = new Map([...move_gain_map.entries()].sort((a, b) => b[1] - a[1]));
     return Array.from(move_gain_ordered.keys());
 }
-
-
-/* 
-*
-TESTS 
-*
-*/
-let game = new Chess();
-game.load('8/P3R2r/1P5p/PP1p4/R2p4/2r5/2Bb2k1/3K1b2 w - - 0 1');
-let verbose_moves = game.moves({ verbose: true });
-let ordered_moves = move_ordering(verbose_moves);
-console.log(ordered_moves);
-
-/* let game = new Chess();
-const t0 = performance.now();
-let test1 = alpha_beta(3, game, true, -Infinity, Infinity, game.turn());
-const t1 = performance.now();
-
-console.log("Alpha Beta pruning best move: " + test1.bestMove);
-console.log(`Time to perform: ${(t1 - t0)/1000} seconds.`);
-
-let game2 = new Chess();
-const t2 = performance.now();
-let test2 = minimax(3, game, true, game.turn());
-const t3 = performance.now();
-
-console.log("Minimax best move: " + test2.bestMove);
-console.log(`Time to perform: ${(t3 - t2)/1000} seconds.`); */
-
-/* let game = new Chess();
-
-// Get the best score and moves for a new game.
-let obj = minimax(maxDepth, game, true, game.turn());
-console.log("Max Score:", obj.bestScore);
-console.log("Best Move:", obj.bestMove);
-
-game.move(obj.bestMove); */
-
-/* let obj2 = minimax(maxDepth, game, true, game.turn());
-console.log("Max Score:", obj2.bestScore);
-console.log("Best Move:", obj2.bestMove); */
