@@ -89,59 +89,56 @@ function evaluate_gain(scores, side) {
 }
 
 // Returns the optimal score and corresponding best move.
-export function minimax(depth, game, isMax, color) {
+export function minimax(depth, game, isMax, side) {
     // Object that holds the best score and
     // best move. This is returned.
     var obj = {
         bestScore: 0,
         bestMove: '',
-        bestMoves: []
+        bestMoves: [],
     };
 
     // Base case. When the number of moves to search or 
     // no legal moves left is reached.
     if (depth == 0 || game.isGameOver) {
         // Calculate the gain.
-        let w_score = evaluateBoard(game).w_score;
-        let b_score = evaluateBoard(game).b_score;
-        if (color === 'w') {
-            obj.bestScore = w_score - b_score;
-        } else {
-            obj.bestScore = b_score - w_score;
-        }
+        let scores = evaluateBoard(game);
+        obj.bestScore = evaluate_gain(scores, side)
         return obj;
     }
 
-    let moves = game.moves();
+    // Order the moves from best to worst.
+    let ordered_moves = order_moves(game.moves({ verbose: true }));
+    
+    // Create a new game and load the current position.
     let updatedGame = new Chess();
     updatedGame.load(game.fen());
 
     if (isMax) {
         // Maximizing.
         obj.bestScore = -Infinity;
-        for (let i = 0; i < moves.length; i++) {
-            updatedGame.move(moves[i]); // make each possible moves from current position
-            let minimaxScore = minimax(depth-1, updatedGame, false, color).bestScore;
-            if (obj.bestScore <= minimaxScore) {
+        for (let i = 0; i < ordered_moves.length; i++) {
+            updatedGame.move(ordered_moves[i]); // make each possible moves from current position
+            let minimaxScore = minimax(depth-1, updatedGame, false, side).bestScore;
+            if (obj.bestScore < minimaxScore) {
                 obj.bestScore = minimaxScore; // assign better score.
-                obj.bestMoves.push(moves[i]); // Store the best move.
-                obj.bestMove = moves[i]; // assign current move because score is better if move is made.
+                obj.bestMove = ordered_moves[i]; // assign current move because score is better if move is made.
+                obj.bestMoves.push(ordered_moves[i]);
             }
         }
     } else {
         // Minimizing.
         obj.bestScore = Infinity;
-        for (let i = 0; i < moves.length; i++) {
-            updatedGame.move(moves[i]); // make each possible moves from current position
-            let minimaxScore = minimax(depth-1, updatedGame, true, color).bestScore;
-            if (obj.bestScore >= minimaxScore) {
+        for (let i = 0; i < ordered_moves.length; i++) {
+            updatedGame.move(ordered_moves[i]); // make each possible moves from current position
+            let minimaxScore = minimax(depth-1, updatedGame, true, side).bestScore;
+            if (obj.bestScore > minimaxScore) {
                 obj.bestScore = minimaxScore;
-                obj.bestMoves.push(moves[i]);
-                obj.bestMove = moves[i];
+                obj.bestMove = ordered_moves[i];
+                obj.bestMoves.push(ordered_moves[i]);
             }
         }
     }
-
     return obj;
 }
 
@@ -152,6 +149,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     var obj = {
         bestScore: 0,
         bestMove: '',
+        bestMoves: [],
     };
 
     // Base case. When the depth is reached or
@@ -164,8 +162,6 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
         return obj;
     }
 
-    // Get the legal moves.
-    let moves = game.moves();
     // Order the moves from best to worst.
     let ordered_moves = order_moves(game.moves({ verbose: true }));
 
@@ -180,18 +176,19 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
             updatedGame.move(ordered_moves[i]);
             // Get the best gain for this move.
             let score = alpha_beta(depth-1, updatedGame, false, alpha, beta, side).bestScore;
+            // If there is a better move found.
+            if (score > alpha) {
+                alpha = score;
+                obj.bestScore = score;
+                obj.bestMove = ordered_moves[i];
+                obj.bestMoves.push(ordered_moves[i]);
+            }
             // If move returns a gain greater than
-            // the current best gain, cutoff. This
+            // the current beta, cutoff. This
             // is because the minimizer would never
             // choose this move or any subsequent moves.
             if (score >= beta) {
                 return obj;
-            }
-            // If there is a better move found.
-            if (score > alpha) {
-                alpha = score;
-                obj.bestScore = alpha;
-                obj.bestMove = ordered_moves[i];
             }
         }
         return obj;
@@ -200,13 +197,14 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
         for (let i = 0; i < ordered_moves.length; i++) {
             updatedGame.move(ordered_moves[i]);
             let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, side).bestScore;
-            if (score <= alpha) {
-                return obj;
-            }
             if (score < beta) {
                 beta = score;
-                obj.bestScore = beta;
+                obj.bestScore = score;
                 obj.bestMove = ordered_moves[i];
+                obj.bestMoves.push(ordered_moves[i]);
+            }
+            if (score <= alpha) {
+                return obj;
             }
         }
         return obj;
@@ -225,12 +223,9 @@ export function order_moves(moves) {
     // Put all of the MVV-LVA moves in a list and order
     // by gain in descending order.
     // Return this list to be traversed by the alpha-beta algo.
-
-    // Another heuristic is (re)capturing the last
-    // moved piece with the least valuable attacker.
-    // Other heuristics to consider: promotions, checkmates
     let move_gain_map = new Map();
 
+    // Loop through each move.
     for (let i = 0; i < moves.length; i++) {
         let move = moves[i];
         let piece = move.piece;

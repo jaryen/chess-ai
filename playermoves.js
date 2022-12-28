@@ -4,15 +4,12 @@ import { Chess } from './chess.js';
 import { alpha_beta } from './value.js';
 
 export var game = new Chess();
-
-// Fires when position of board changes.
-function onChange(oldPos, newPos) {
-
-}
+const depth = 4;
 
 // Calls the alpha beta pruning function.
 function CPUMove() {
-    let obj = alpha_beta(4, game, true, -Infinity, Infinity, game.turn());
+    let obj = alpha_beta(depth, game, true, -Infinity, Infinity, game.turn());
+    console.log(obj.bestMoves);
     game.move(obj.bestMove);
     board.position(game.fen());
 }
@@ -40,23 +37,23 @@ function onDrop (source, target) {
 
     // illegal move
     if (move === null) return 'snapback';
-
-    window.setTimeout(CPUMove(), 250);
 }
 
 // update the board position after the piece snap
 // for castling, en passant, pawn promotion
-function onSnapEnd () {
-    board.position(game.fen())
+function onSnapEnd() {
+    // Update the board.
+    board.position(game.fen());
+
+    window.setTimeout(CPUMove(), 250);
 }
 
 var config = {
     draggable: true,
     position: 'start',
-    onChange: onChange,
     onDragStart: onDragStart,
     onDrop: onDrop,
-    onSnapEnd: onSnapEnd
+    onSnapEnd: onSnapEnd,
 }
 
 var board = ChessBoard(document.getElementById('myBoard'), config);
