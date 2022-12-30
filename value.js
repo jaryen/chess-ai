@@ -5,19 +5,19 @@ import { Chess } from './chess.js';
 
 // Piece values
 const Pawn = 100;
-const Knight = 350;
-const Bishop = 350;
-const Rook = 525;
-const Queen = 1000;
-const King = 1250;
+const Knight = 300;
+const Bishop = 320;
+const Rook = 500;
+const Queen = 900;
+const King = 1300;
 
 const piece_value_map = new Map();
 piece_value_map.set('p', 100);
-piece_value_map.set('n', 350);
-piece_value_map.set('b', 350);
-piece_value_map.set('r', 530);
-piece_value_map.set('q', 1000);
-piece_value_map.set('k', 1250);
+piece_value_map.set('n', 300);
+piece_value_map.set('b', 320);
+piece_value_map.set('r', 500);
+piece_value_map.set('q', 900);
+piece_value_map.set('k', 1300);
 // Points for checkmate?
 
 // Depth of the minimax search tree.
@@ -108,7 +108,7 @@ export function minimax(depth, game, isMax, side) {
     }
 
     // Order the moves from best to worst.
-    let ordered_moves = order_moves(game.moves({ verbose: true }));
+    let ordered_moves = order_moves(game, game.moves({ verbose: true }));
     
     // Create a new game and load the current position.
     let updatedGame = new Chess();
@@ -163,7 +163,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     }
 
     // Order the moves from best to worst.
-    let ordered_moves = order_moves(game.moves({ verbose: true }));
+    let ordered_moves = order_moves(game, game.moves({ verbose: true }));
 
     // Create a new game and load the current position.
     let updatedGame = new Chess();
@@ -211,9 +211,79 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     }
 }
 
+
+// Alpha beta function using unordered moves.
+export function alpha_beta_unordered(depth, game, isMax, alpha, beta, side) {
+    // Object that holds the best score and
+    // best move. This is returned.
+    var obj = {
+        bestScore: 0,
+        bestMove: '',
+        bestMoves: [],
+    };
+
+    // Base case. When the depth is reached or
+    // the game is over, return
+    // the gain for the side being calculated.
+    if (depth == 0 || game.isGameOver) {
+        // Calculate the gain and return it.
+        let scores = evaluateBoard(game);
+        obj.bestScore = evaluate_gain(scores, side);
+        return obj;
+    }
+
+    // Get the moves in alphabetical order.
+    let moves = game.moves();
+
+    // Create a new game and load the current position.
+    let updatedGame = new Chess();
+    updatedGame.load(game.fen());
+
+    if (isMax) {
+        // Maximizing.
+        // Go through each legal moves.
+        for (let i = 0; i < moves.length; i++) {
+            updatedGame.move(moves[i]);
+            // Get the best gain for this move.
+            let score = alpha_beta(depth-1, updatedGame, false, alpha, beta, side).bestScore;
+            // If there is a better move found.
+            if (score > alpha) {
+                alpha = score;
+                obj.bestScore = score;
+                obj.bestMove = moves[i];
+                obj.bestMoves.push(moves[i]);
+            }
+            // If move returns a gain greater than
+            // the current beta, cutoff. This
+            // is because the minimizer would never
+            // choose this move or any subsequent moves.
+            if (score >= beta) {
+                return obj;
+            }
+        }
+        return obj;
+    } else {
+        // Minimizing.
+        for (let i = 0; i < moves.length; i++) {
+            updatedGame.move(moves[i]);
+            let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, side).bestScore;
+            if (score < beta) {
+                beta = score;
+                obj.bestScore = score;
+                obj.bestMove = moves[i];
+                obj.bestMoves.push(moves[i]);
+            }
+            if (score <= alpha) {
+                return obj;
+            }
+        }
+        return obj;
+    }
+}
+
 // This function orders the nodes in
 // the alpha-beta tree for optimal pruning.
-export function order_moves(moves) {
+export function order_moves(game, moves) {
     // Order by capture moves first.
     // MVV-LVA
     // First, get the children of current none-leaf
@@ -230,14 +300,30 @@ export function order_moves(moves) {
         let move = moves[i];
         let piece = move.piece;
         let gain = 0;
+
+        // MVV-LVA Captures
         if (move.hasOwnProperty('captured')) {
             let piece_captured = move.captured;
-            gain = (100*piece_value_map.get(piece_captured)) - (piece_value_map.get(piece));
+            gain += (10*piece_value_map.get(piece_captured)) - (piece_value_map.get(piece));
         }
+        // Promotions
+        if (move.hasOwnProperty('promotion')) {
+            // Should be around same as 10*Q - P value.
+            gain += 9000;
+        }
+        // Checkmate (TODO: fix, its running way too long).
+        /* let updated_game = new Chess(game.fen());
+        updated_game.move(moves[i]);
+        if (updated_game.isCheckmate) {
+            // Game over. Bring it to the front.
+            gain += Infinity;
+        } */
+
+        // Associate gain with the move.
         move_gain_map.set(move.san, gain);
     }
 
-    // Order map by value
+    // Order moves by gain.
     let move_gain_ordered = new Map([...move_gain_map.entries()].sort((a, b) => b[1] - a[1]));
     return Array.from(move_gain_ordered.keys());
 }

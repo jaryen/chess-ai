@@ -7,10 +7,15 @@ export var game = new Chess();
 const depth = 4;
 
 // Calls the alpha beta pruning function.
-function CPUMove() {
+function cpuMove() {
     let obj = alpha_beta(depth, game, true, -Infinity, Infinity, game.turn());
     console.log(obj.bestMoves);
-    game.move(obj.bestMove);
+
+    let rand_idx = Math.floor(Math.random() * (obj.bestMoves.length-1));
+    let rand_move = obj.bestMoves[rand_idx];
+    game.move(rand_move);
+    console.log('Move made:', rand_move);
+
     board.position(game.fen());
 }
 
@@ -45,7 +50,29 @@ function onSnapEnd() {
     // Update the board.
     board.position(game.fen());
 
-    window.setTimeout(CPUMove(), 250);
+    window.setTimeout(cpuMove(), 250);
+}
+
+// Clears board.
+function clearBoard() {
+    document.getElementById('myBoard').style.display = "none";
+    document.getElementById('clearedBoard').style.display = "block";
+
+    game.clear();
+}
+
+// Reset board to starting position.
+function resetBoard() {
+    document.getElementById('myBoard').style.display = "block";
+    document.getElementById('clearedBoard').style.display = "none";
+
+    board.start();
+    game.reset();
+}
+
+// Displays the FEN by the board.
+function showFen() {
+    console.log(cleared_board.fen());
 }
 
 var config = {
@@ -56,4 +83,15 @@ var config = {
     onSnapEnd: onSnapEnd,
 }
 
+var cleared_config = {
+    draggable: true,
+    dropOffBoard: 'trash',
+    sparePieces: true,
+}
+
+document.getElementById('getFenBtn').onclick = showFen;
+document.getElementById('clearBoard').onclick = clearBoard;
+document.getElementById('resetBoard').onclick = resetBoard;
+
 var board = ChessBoard(document.getElementById('myBoard'), config);
+var cleared_board = ChessBoard(document.getElementById('clearedBoard'), cleared_config);
