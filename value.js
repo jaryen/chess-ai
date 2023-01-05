@@ -101,6 +101,10 @@ export function minimax(depth, game, isMax, side) {
     // Base case. When the number of moves to search or 
     // no legal moves left is reached.
     if (depth == 0 || game.isGameOver) {
+        if (game.isGameOver) {
+            obj.bestScore = Infinity;
+            return obj;
+        }
         // Calculate the gain.
         let scores = evaluateBoard(game);
         obj.bestScore = evaluate_gain(scores, side)
@@ -108,20 +112,19 @@ export function minimax(depth, game, isMax, side) {
     }
 
     // Order the moves from best to worst.
-    let ordered_moves = order_moves(game, game.moves({ verbose: true }));
+    let ordered_moves = order_moves(game.moves({ verbose: true }));
     
     // Create a new game and load the current position.
-    let updatedGame = new Chess();
-    updatedGame.load(game.fen());
+    let updatedGame = new Chess(game.fen());
 
     if (isMax) {
         // Maximizing.
         obj.bestScore = -Infinity;
         for (let i = 0; i < ordered_moves.length; i++) {
             updatedGame.move(ordered_moves[i]); // make each possible moves from current position
-            let minimaxScore = minimax(depth-1, updatedGame, false, side).bestScore;
-            if (obj.bestScore < minimaxScore) {
-                obj.bestScore = minimaxScore; // assign better score.
+            let score = minimax(depth-1, updatedGame, false, side).bestScore;
+            if (obj.bestScore < score) {
+                obj.bestScore = score; // assign better score.
                 obj.bestMove = ordered_moves[i]; // assign current move because score is better if move is made.
                 obj.bestMoves.push(ordered_moves[i]);
             }
@@ -131,9 +134,9 @@ export function minimax(depth, game, isMax, side) {
         obj.bestScore = Infinity;
         for (let i = 0; i < ordered_moves.length; i++) {
             updatedGame.move(ordered_moves[i]); // make each possible moves from current position
-            let minimaxScore = minimax(depth-1, updatedGame, true, side).bestScore;
-            if (obj.bestScore > minimaxScore) {
-                obj.bestScore = minimaxScore;
+            let score = minimax(depth-1, updatedGame, true, side).bestScore;
+            if (obj.bestScore > score) {
+                obj.bestScore = score;
                 obj.bestMove = ordered_moves[i];
                 obj.bestMoves.push(ordered_moves[i]);
             }
@@ -156,6 +159,10 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     // the game is over, return
     // the gain for the side being calculated.
     if (depth == 0 || game.isGameOver) {
+        if (game.isGameOver) { // Checkmate.
+            obj.bestScore = Infinity; // Should return a infinite gain.
+            return obj;
+        }
         // Calculate the gain and return it.
         let scores = evaluateBoard(game);
         obj.bestScore = evaluate_gain(scores, side);
@@ -163,11 +170,10 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
     }
 
     // Order the moves from best to worst.
-    let ordered_moves = order_moves(game, game.moves({ verbose: true }));
+    let ordered_moves = order_moves(game.moves({ verbose: true }));
 
     // Create a new game and load the current position.
-    let updatedGame = new Chess();
-    updatedGame.load(game.fen());
+    let updatedGame = new Chess(game.fen());
 
     if (isMax) {
         // Maximizing.
@@ -179,7 +185,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
             // If there is a better move found.
             if (score > alpha) {
                 alpha = score;
-                obj.bestScore = score;
+                obj.bestScore = alpha;
                 obj.bestMove = ordered_moves[i];
                 obj.bestMoves.push(ordered_moves[i]);
             }
@@ -199,7 +205,7 @@ export function alpha_beta(depth, game, isMax, alpha, beta, side) {
             let score = alpha_beta(depth-1, updatedGame, true, alpha, beta, side).bestScore;
             if (score < beta) {
                 beta = score;
-                obj.bestScore = score;
+                obj.bestScore = beta;
                 obj.bestMove = ordered_moves[i];
                 obj.bestMoves.push(ordered_moves[i]);
             }
@@ -283,7 +289,7 @@ export function alpha_beta_unordered(depth, game, isMax, alpha, beta, side) {
 
 // This function orders the nodes in
 // the alpha-beta tree for optimal pruning.
-export function order_moves(game, moves) {
+export function order_moves(moves) {
     // Order by capture moves first.
     // MVV-LVA
     // First, get the children of current none-leaf
@@ -311,13 +317,11 @@ export function order_moves(game, moves) {
             // Should be around same as 10*Q - P value.
             gain += 9000;
         }
-        // Checkmate (TODO: fix, its running way too long).
-        /* let updated_game = new Chess(game.fen());
-        updated_game.move(moves[i]);
-        if (updated_game.isCheckmate) {
+        // Checkmate
+        if (move.san.charAt(move.san.length-1) === '#') {
             // Game over. Bring it to the front.
             gain += Infinity;
-        } */
+        }
 
         // Associate gain with the move.
         move_gain_map.set(move.san, gain);
